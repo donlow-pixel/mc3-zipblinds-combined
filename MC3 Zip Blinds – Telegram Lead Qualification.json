@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## ✈️ MC3 Telegram Lead Qualification Flow\n\n**How it works:**\n1. Customer messages the MC3 Telegram bot\n2. Stage 1 — Bot captures Name + Email (required before any product help)\n3. Stage 2 — Bot answers product questions via Supabase RAG (mc3_documents table)\n4. Each reply includes a lead score 0–100 based on purchase intent signals\n5. Score > 69 → Gmail alert fired to sales team\n6. Score ≤ 69 → Plain Telegram reply only\n\n**Shared knowledge base:** `mc3_documents` table in Supabase\n(same table used by the AgentX web chat — documents uploaded via the Admin Portal appear here too)\n\n**Credentials needed (re-pick after import):**\n• telegramApi — Telegram Trigger + Send a text message\n• googlePalmApi — Google Gemini Chat Model\n• openAiApi — OpenAI Embeddings\n• supabaseApi — Supabase RAG Retriever\n• gmailOAuth2 — Gmail Alert (DISABLE this node if no Gmail credential)",
+        "content": "## ✈️ MC3 Telegram Lead Qualification Flow\n\n**How it works:**\n1. Customer messages the MC3 Telegram bot\n2. Stage 1 — Bot captures Name + Email (required before any product help)\n3. Stage 2 — Bot answers product questions via Supabase RAG (mc3_documents table)\n4. Each reply includes a lead score 0–100 based on purchase intent signals\n5. Score > 69 → Gmail alert fired to sales team\n6. Score ≤ 69 → Plain Telegram reply only\n\n**Shared knowledge base:** `mc3_documents` table in Supabase\n(same table used by the AgentX web chat — documents uploaded via the Admin Portal appear here too)\n\n**Credentials needed (re-pick after import):**\n• telegramApi — Telegram Trigger + Send a text message\n• openAiApi — OpenAI GPT-4o (chat) + OpenAI Embeddings (same credential)\n• supabaseApi — Supabase RAG Retriever\n• gmailOAuth2 — Gmail Alert (DISABLE this node if no Gmail credential)",
         "height": 480,
         "width": 660,
         "color": 4
@@ -71,24 +71,31 @@
         560,
         560
       ],
-      "typeVersion": 2.2
+      "typeVersion": 2.3
     },
     {
       "parameters": {
-        "options": {}
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o"
+        },
+        "options": {
+          "temperature": 0.3
+        }
       },
-      "id": "mc3tg-gemini-0005",
-      "name": "🧠 Google Gemini Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "id": "mc3tg-openai-chat-0005",
+      "name": "🧠 OpenAI GPT-4o",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "position": [
         400,
         800
       ],
-      "typeVersion": 1.1,
+      "typeVersion": 1.2,
       "credentials": {
-        "googlePalmApi": {
-          "id": "REPLACE_WITH_GOOGLE_PALM_CREDENTIAL_ID",
-          "name": "Google Gemini(PaLM) API"
+        "openAiApi": {
+          "id": "X0ObAVdred9V8HFu",
+          "name": "OpenAi account"
         }
       }
     },
@@ -274,7 +281,7 @@
         ]
       ]
     },
-    "🧠 Google Gemini Chat Model": {
+    "🧠 OpenAI GPT-4o": {
       "ai_languageModel": [
         [
           {

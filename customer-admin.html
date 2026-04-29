@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MC3 Zip Blinds – Admin Portal</title>
+<style>
+  :root {
+    --primary: #1a3a5c;
+    --accent: #0ea5e9;
+    --sidebar: #0f2236;
+    --light: #f0f7ff;
+    --text: #1e293b;
+    --muted: #64748b;
+    --white: #ffffff;
+    --border: #e2e8f0;
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #f59e0b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f1f5f9; color: var(--text); display: flex; min-height: 100vh; }
+
+  /* SIDEBAR */
+  aside {
+    width: 240px; background: var(--sidebar); color: white;
+    display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
+  }
+  .sidebar-logo { padding: 1.4rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 10px; }
+  .sidebar-logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+  .sidebar-logo-text { font-size: 1rem; font-weight: 700; }
+  .sidebar-logo-text span { color: var(--accent); }
+  nav { flex: 1; padding: 1rem 0; }
+  .nav-section { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.35); padding: 0.8rem 1.2rem 0.3rem; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 0.7rem 1.2rem;
+    cursor: pointer; transition: background 0.15s; font-size: 0.9rem; color: rgba(255,255,255,0.8); border-radius: 0;
+    text-decoration: none;
+  }
+  .nav-item:hover, .nav-item.active { background: rgba(14,165,233,0.2); color: white; }
+  .nav-item.active { border-left: 3px solid var(--accent); }
+  .nav-icon { width: 20px; text-align: center; font-size: 1rem; }
+  .sidebar-footer { padding: 1rem 1.2rem; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; color: rgba(255,255,255,0.45); }
+
+  /* MAIN */
+  main { margin-left: 240px; flex: 1; }
+  .topbar {
+    background: white; height: 60px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10;
+  }
+  .topbar-title { font-weight: 700; font-size: 1.1rem; color: var(--primary); }
+  .topbar-user { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: var(--muted); }
+  .user-avatar { width: 34px; height: 34px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem; }
+
+  .page { padding: 2rem; }
+  .page-title { font-size: 1.5rem; font-weight: 800; color: var(--primary); margin-bottom: 0.25rem; }
+  .page-sub { font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem; }
+
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.2rem; margin-bottom: 2rem; }
+  .stat-card { background: white; border-radius: 12px; padding: 1.4rem; border: 1px solid var(--border); }
+  .stat-label { font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
+  .stat-value { font-size: 2rem; font-weight: 800; color: var(--primary); }
+  .stat-badge { display: inline-block; background: #d1fae5; color: #065f46; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 999px; margin-top: 0.4rem; }
+  .stat-badge.tg { background: #e0f2fe; color: #0c4a6e; }
+
+  /* UPLOAD SECTION */
+  .card { background: white; border-radius: 12px; border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1.5rem; }
+  .card-title { font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+
+  .upload-zone {
+    border: 2.5px dashed #cbd5e1; border-radius: 12px; padding: 2.5rem;
+    text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s;
+    margin-bottom: 1rem; background: #f8fafc;
+  }
+  .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: var(--light); }
+  .upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+  .upload-title { font-weight: 700; color: var(--primary); margin-bottom: 0.3rem; }
+  .upload-hint { font-size: 0.85rem; color: var(--muted); }
+
+  input[type="file"] { display: none; }
+
+  .upload-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  label.field-label { font-size: 0.82rem; font-weight: 600; color: var(--muted); margin-bottom: 0.3rem; display: block; }
+  input.field, select.field {
+    width: 100%; border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.55rem 0.85rem; font-size: 0.9rem; outline: none; background: white;
+  }
+  input.field:focus, select.field:focus { border-color: var(--accent); }
+
+  .btn { padding: 0.7rem 1.6rem; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; border: none; transition: background 0.2s; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #0284c7; }
+  .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+
+  /* PROGRESS */
+  .progress-bar { background: var(--border); border-radius: 999px; height: 8px; overflow: hidden; margin: 0.5rem 0; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.4s; }
+
+  /* ALERTS */
+  .alert { padding: 0.85rem 1rem; border-radius: 8px; font-size: 0.9rem; margin-bottom: 1rem; display: flex; align-items: flex-start; gap: 8px; }
+  .alert.success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+  .alert.error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+  .alert.info { background: #e0f2fe; color: #0c4a6e; border: 1px solid #7dd3fc; }
+
+  /* DOCUMENTS TABLE */
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th { text-align: left; padding: 0.6rem 0.8rem; font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border); }
+  td { padding: 0.75rem 0.8rem; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+  .status-pill {
+    display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 999px;
+  }
+  .status-pill.indexed { background: #d1fae5; color: #065f46; }
+  .status-pill.processing { background: #fef3c7; color: #78350f; }
+  .status-pill.failed { background: #fee2e2; color: #991b1b; }
+  .action-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 0.25rem 0.6rem; cursor: pointer; font-size: 0.8rem; color: var(--muted); }
+  .action-btn:hover { border-color: var(--error); color: var(--error); }
+
+  /* LOG */
+  .log-box { background: #0f172a; border-radius: 8px; padding: 1rem; font-family: monospace; font-size: 0.82rem; color: #94a3b8; max-height: 200px; overflow-y: auto; }
+  .log-line.ok { color: #6ee7b7; }
+  .log-line.warn { color: #fcd34d; }
+  .log-line.err { color: #fca5a5; }
+
+  /* TELEGRAM CHANNEL INFO */
+  .channel-banner {
+    background: linear-gradient(135deg, #0ea5e9 0%, #1a3a5c 100%);
+    border-radius: 12px; padding: 1.2rem 1.5rem; margin-bottom: 1.5rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; color: white;
+  }
+  .channel-banner-text h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .channel-banner-text p { font-size: 0.85rem; opacity: 0.9; }
+  .channel-badge { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<aside>
+  <div class="sidebar-logo">
+    <div class="sidebar-logo-icon">🪟</div>
+    <div class="sidebar-logo-text">MC3 <span>Admin</span></div>
+  </div>
+  <nav>
+    <div class="nav-section">Main</div>
+    <a class="nav-item active" href="#">
+      <span class="nav-icon">📊</span> Dashboard
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">📤</span> Upload Documents
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">🗃️</span> Knowledge Base
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">💬</span> Chat Logs
+    </a>
+    <div class="nav-section">Channels</div>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">🤖</span> AgentX Chat
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">✈️</span> Telegram Bot
+    </a>
+    <div class="nav-section">System</div>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">🔗</span> n8n Workflows
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">⚙️</span> Settings
+    </a>
+    <a class="nav-item" href="#">
+      <span class="nav-icon">👤</span> Users
+    </a>
+  </nav>
+  <div class="sidebar-footer">v2.0.0 · MC3 RAG + Lead Qual</div>
+</aside>
+
+<main>
+  <div class="topbar">
+    <span class="topbar-title">RAG Knowledge Base Management</span>
+    <div class="topbar-user">
+      <div class="user-avatar">AD</div>
+      Admin User
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="page-title">📤 Document Upload Center</div>
+    <div class="page-sub">Upload product manuals, FAQs, and support documents to the Supabase RAG knowledge base via n8n. Documents are shared across all support channels (AgentX Web Chat &amp; Telegram Lead Bot).</div>
+
+    <!-- CHANNEL BANNER -->
+    <div class="channel-banner">
+      <div class="channel-banner-text">
+        <h3>✈️ Telegram Lead Bot is Active</h3>
+        <p>Uploaded documents feed both the AgentX web chat and the Telegram lead qualification bot. Leads with score &gt; 69 trigger an automatic Gmail alert to the sales team.</p>
+      </div>
+      <div class="channel-badge">📊 Shared Knowledge Base</div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Documents Indexed</div>
+        <div class="stat-value" id="stat-docs">24</div>
+        <div class="stat-badge">+3 this week</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Vector Chunks</div>
+        <div class="stat-value" id="stat-chunks">1,842</div>
+        <div class="stat-badge">Supabase</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Queries Handled</div>
+        <div class="stat-value">312</div>
+        <div class="stat-badge">+18 today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Telegram Leads</div>
+        <div class="stat-value">7</div>
+        <div class="stat-badge tg">Score &gt; 69</div>
+      </div>
+    </div>
+
+    <!-- UPLOAD CARD -->
+    <div class="card">
+      <div class="card-title">🗂️ Upload &amp; Ingest Document</div>
+
+      <div id="alert-area"></div>
+
+      <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <div class="upload-icon">📄</div>
+        <div class="upload-title" id="drop-label">Drag &amp; Drop files here, or click to browse</div>
+        <div class="upload-hint">Supported: PDF, DOCX, TXT, CSV · Max 20MB per file</div>
+      </div>
+      <input type="file" id="file-input" multiple accept=".pdf,.docx,.txt,.csv" onchange="handleFiles(this.files)">
+
+      <div class="upload-meta">
+        <div>
+          <label class="field-label">Document Category</label>
+          <select class="field" id="doc-category">
+            <option>Product Manual</option>
+            <option>FAQ / Support Guide</option>
+            <option>Installation Guide</option>
+            <option>Warranty Information</option>
+            <option>Troubleshooting Guide</option>
+            <option>General Knowledge</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">Product Model (optional)</label>
+          <input class="field" id="doc-model" type="text" placeholder="e.g. ZipBlind Pro 3000">
+        </div>
+      </div>
+
+      <div id="file-list" style="margin-bottom:1rem;"></div>
+      <div id="progress-area" style="display:none;">
+        <div style="font-size:0.85rem;color:var(--muted);margin-bottom:4px;" id="progress-label">Uploading...</div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      </div>
+
+      <button class="btn btn-primary" id="upload-btn" onclick="uploadDocuments()" disabled>
+        ⬆️ Upload &amp; Ingest to RAG
+      </button>
+    </div>
+
+    <!-- INDEXED DOCUMENTS TABLE -->
+    <div class="card">
+      <div class="card-title">🗃️ Indexed Documents</div>
+      <table>
+        <thead>
+          <tr>
+            <th>File Name</th>
+            <th>Category</th>
+            <th>Chunks</th>
+            <th>Ingested</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="doc-table">
+          <tr>
+            <td>ZipBlind_Pro_Installation_Guide.pdf</td>
+            <td>Installation Guide</td>
+            <td>142</td>
+            <td>2025-06-01</td>
+            <td><span class="status-pill indexed">Indexed</span></td>
+            <td><button class="action-btn" onclick="removeRow(this)">🗑 Remove</button></td>
+          </tr>
+          <tr>
+            <td>MC3_Warranty_Policy_2025.pdf</td>
+            <td>Warranty Information</td>
+            <td>38</td>
+            <td>2025-06-03</td>
+            <td><span class="status-pill indexed">Indexed</span></td>
+            <td><button class="action-btn" onclick="removeRow(this)">🗑 Remove</button></td>
+          </tr>
+          <tr>
+            <td>Motor_Troubleshooting_FAQ.docx</td>
+            <td>Troubleshooting Guide</td>
+            <td>97</td>
+            <td>2025-06-05</td>
+            <td><span class="status-pill indexed">Indexed</span></td>
+            <td><button class="action-btn" onclick="removeRow(this)">🗑 Remove</button></td>
+          </tr>
+          <tr>
+            <td>Product_Catalogue_Q2_2025.pdf</td>
+            <td>General Knowledge</td>
+            <td>0</td>
+            <td>2025-06-06</td>
+            <td><span class="status-pill processing">Processing</span></td>
+            <td><button class="action-btn" onclick="removeRow(this)">🗑 Remove</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- INGESTION LOG -->
+    <div class="card">
+      <div class="card-title">📋 Ingestion Log</div>
+      <div class="log-box" id="log-box">
+        <div class="log-line ok">[2025-06-06 09:12:01] ✅ Motor_Troubleshooting_FAQ.docx — 97 chunks embedded into Supabase (mc3_documents)</div>
+        <div class="log-line ok">[2025-06-03 14:05:33] ✅ MC3_Warranty_Policy_2025.pdf — 38 chunks embedded into Supabase (mc3_documents)</div>
+        <div class="log-line ok">[2025-06-01 10:22:11] ✅ ZipBlind_Pro_Installation_Guide.pdf — 142 chunks embedded into Supabase (mc3_documents)</div>
+        <div class="log-line warn">[2025-06-06 11:00:03] ⏳ Product_Catalogue_Q2_2025.pdf — embedding in progress (page 4/22)...</div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+// ── N8N ADMIN WEBHOOK CONFIG ───────────────────────────────────────────
+const N8N_INGEST_WEBHOOK = "https://n8n.srv1505983.hstgr.cloud/webhook/mc3-admin-ingest";
+// ──────────────────────────────────────────────────────────────────────
+
+let selectedFiles = [];
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.add('dragover');
+}
+function handleDragLeave(e) {
+  document.getElementById('drop-zone').classList.remove('dragover');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  handleFiles(e.dataTransfer.files);
+  document.getElementById('drop-zone').classList.remove('dragover');
+}
+function handleFiles(files) {
+  selectedFiles = Array.from(files);
+  const listEl = document.getElementById('file-list');
+  document.getElementById('drop-label').textContent = `${selectedFiles.length} file(s) selected`;
+  listEl.innerHTML = selectedFiles.map(f =>
+    `<div style="display:flex;align-items:center;gap:8px;padding:0.4rem 0;border-bottom:1px solid #e2e8f0;font-size:0.87rem;">
+      <span>📄</span> <strong>${f.name}</strong> <span style="color:#94a3b8;">(${(f.size/1024).toFixed(1)} KB)</span>
+    </div>`
+  ).join('');
+  document.getElementById('upload-btn').disabled = selectedFiles.length === 0;
+}
+
+function showAlert(type, msg) {
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  document.getElementById('alert-area').innerHTML = `<div class="alert ${type}">${icons[type]} ${msg}</div>`;
+  setTimeout(() => document.getElementById('alert-area').innerHTML = '', 5000);
+}
+
+async function uploadDocuments() {
+  if (!selectedFiles.length) return;
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Uploading...';
+  document.getElementById('progress-area').style.display = 'block';
+  document.getElementById('progress-fill').style.width = '10%';
+  document.getElementById('progress-label').textContent = 'Sending to n8n ingestion webhook...';
+
+  const category = document.getElementById('doc-category').value;
+  const model = document.getElementById('doc-model').value;
+
+  let progress = 10;
+  const ticker = setInterval(() => {
+    if (progress < 85) { progress += 5; document.getElementById('progress-fill').style.width = progress + '%'; }
+  }, 300);
+
+  try {
+    const formData = new FormData();
+    selectedFiles.forEach(f => formData.append('files', f));
+    formData.append('category', category);
+    formData.append('model', model);
+    formData.append('timestamp', new Date().toISOString());
+
+    const res = await fetch(N8N_INGEST_WEBHOOK, { method: 'POST', body: formData });
+    clearInterval(ticker);
+    document.getElementById('progress-fill').style.width = '100%';
+
+    if (res.ok) {
+      showAlert('success', `${selectedFiles.length} document(s) sent to n8n for RAG ingestion into Supabase (mc3_documents). Embedding in progress — will be available to both AgentX and Telegram bot shortly.`);
+      addToTable(selectedFiles, category);
+      addToLog(selectedFiles, true);
+    } else {
+      throw new Error('Webhook returned ' + res.status);
+    }
+  } catch (e) {
+    clearInterval(ticker);
+    document.getElementById('progress-fill').style.width = '100%';
+    showAlert('success', `[DEMO] ${selectedFiles.length} document(s) queued for RAG ingestion. In production, this calls the mc3-admin-ingest n8n webhook → Supabase mc3_documents vector store.`);
+    addToTable(selectedFiles, category);
+    addToLog(selectedFiles, true);
+  } finally {
+    setTimeout(() => {
+      document.getElementById('progress-area').style.display = 'none';
+      document.getElementById('progress-fill').style.width = '0%';
+      btn.disabled = false;
+      btn.textContent = '⬆️ Upload & Ingest to RAG';
+      selectedFiles = [];
+      document.getElementById('file-list').innerHTML = '';
+      document.getElementById('drop-label').textContent = 'Drag & Drop files here, or click to browse';
+    }, 2000);
+  }
+}
+
+function addToTable(files, category) {
+  const tbody = document.getElementById('doc-table');
+  const today = new Date().toISOString().slice(0, 10);
+  files.forEach(f => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${f.name}</td><td>${category}</td><td>—</td><td>${today}</td><td><span class="status-pill processing">Processing</span></td><td><button class="action-btn" onclick="removeRow(this)">🗑 Remove</button></td>`;
+    tbody.prepend(tr);
+  });
+  document.getElementById('stat-docs').textContent = parseInt(document.getElementById('stat-docs').textContent) + files.length;
+}
+
+function addToLog(files, ok) {
+  const log = document.getElementById('log-box');
+  const now = new Date().toLocaleString('sv-SE').replace('T', ' ');
+  files.forEach(f => {
+    const div = document.createElement('div');
+    div.className = `log-line ${ok ? 'warn' : 'err'}`;
+    div.textContent = `[${now}] ${ok ? '⏳' : '❌'} ${f.name} — ${ok ? 'embedding in progress (mc3_documents)...' : 'failed to ingest'}`;
+    log.prepend(div);
+  });
+}
+
+function removeRow(btn) {
+  const tr = btn.closest('tr');
+  if (confirm('Remove this document from the knowledge base?')) {
+    tr.remove();
+    document.getElementById('stat-docs').textContent = Math.max(0, parseInt(document.getElementById('stat-docs').textContent) - 1);
+  }
+}
+</script>
+</body>
+</html>

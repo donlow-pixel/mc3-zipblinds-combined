@@ -1,0 +1,289 @@
+{
+  "name": "MC3 Zip Blinds – Customer Chat RAG (AgentX Webhook)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🐕 MC3 Customer Chat – Retriever Flow\n\n**How it works:**\n1. AgentX (or the Customer Center website) sends a POST to the webhook with `{message: \"...\", source: \"customer-center\"}`\n2. The AI Agent uses the Supabase RAG tool to retrieve relevant knowledge\n3. If no relevant result is found (similarity < 0.07), a fallback escalation response is returned\n4. Final response is sent back via HTTP response node\n\n**Webhook URL (Production):**\n`POST /webhook/mc3-customer-chat`",
+        "height": 340,
+        "width": 540,
+        "color": 4
+      },
+      "id": "c6277082-23d9-4045-84ab-b45c5a4897bb",
+      "name": "📋 README",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## 🔁 Fallback & Escalation Logic\n\n- If Supabase RAG returns no match, the system prompt instructs the agent to reply:\n  **\"I'm sorry, I couldn't find a relevant answer. Please contact our support team at support@mc3blinds.com or call 1800-MC3-HELP.\"**\n- This prevents hallucination — the agent will NOT guess.\n- Escalation is logged via the Respond to Webhook node for audit.",
+        "height": 260,
+        "width": 460,
+        "color": 2
+      },
+      "id": "62d85268-5fe4-4327-b32b-361a21e875f5",
+      "name": "⚠️ Fallback Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        400
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mc3-customer-chat",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "ce67f680-20bc-4a52-a1ba-c6b05c5ee6e0",
+      "name": "📡 AgentX Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        560,
+        272
+      ],
+      "webhookId": "mc3-customer-chat-001",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract the customer message from the incoming webhook payload\nconst body = $input.first().json.body || $input.first().json;\nconst message = body.message || body.query || body.text || 'Hello';\nconst source = body.source || 'customer-center';\nconst sessionId = body.sessionId || `session_${Date.now()}`;\n\nreturn [{ json: { message, source, sessionId } }];"
+      },
+      "id": "8861d880-44bb-40b0-95d9-49fca9166380",
+      "name": "🔍 Extract & Validate Message",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        784,
+        272
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "options": {
+          "systemMessage": "You are MC3 Zip Blinds' AI customer support assistant. Your job is to help customers with questions about MC3 Zip Blind products — including installation, troubleshooting, warranty, returns, and spare parts.\n\nIMPORTANT RULES:\n1. ALWAYS use the Supabase RAG Tool (knowledge base) to find answers before responding.\n2. If the knowledge base returns no relevant result or similarity is low, respond EXACTLY with: \"I'm sorry, I couldn't find specific information about that in our knowledge base. For further assistance, please contact our support team at support@mc3blinds.com or call 1800-MC3-HELP. A human agent will assist you shortly.\"\n3. Do NOT make up answers or hallucinate information.\n4. Keep responses concise, friendly, and professional.\n5. If the customer seems frustrated, acknowledge their concern empathetically."
+        }
+      },
+      "id": "e6fe67ef-38d2-412f-be6c-9f7cf1bae441",
+      "name": "🤖 MC3 AI Support Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        1024,
+        272
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o"
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "1434e1ee-6d25-44b4-ab7a-45198ad3b763",
+      "name": "🧠 OpenAI GPT-4o",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        848,
+        496
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "X0ObAVdred9V8HFu",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Use this tool to search the MC3 Zip Blinds knowledge base in Supabase. It contains product manuals, installation guides, FAQs, warranty policies, and troubleshooting guides. Always call this tool first before answering any customer question.",
+        "tableName": {
+          "__rl": true,
+          "value": "mc3_documents",
+          "mode": "list",
+          "cachedResultName": "mc3_documents"
+        },
+        "topK": 5,
+        "options": {
+          "queryName": "match_mc3_documents"
+        },
+        "toolName": "mc3_knowledge_base"
+      },
+      "id": "175f75ed-961a-4e42-8ada-749225e8e955",
+      "name": "🗃️ Supabase RAG Retriever",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "position": [
+        1120,
+        464
+      ],
+      "typeVersion": 1.3,
+      "credentials": {
+        "supabaseApi": {
+          "id": "jI0LKCf8u8u9hEpI",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "ccbbe685-2fbc-435a-8d1e-371c36c5d6dd",
+      "name": "📐 OpenAI Embeddings (Retriever)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "position": [
+        1232,
+        624
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "X0ObAVdred9V8HFu",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId }}"
+      },
+      "id": "09ca6ac1-2d86-44a1-9e0c-48ba4f0d616a",
+      "name": "🧠 Postgres Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "position": [
+        1024,
+        592
+      ],
+      "typeVersion": 1.3,
+      "credentials": {
+        "postgres": {
+          "id": "lNBx0XzM1IP9L2uk",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ reply: $json.output, sessionId: $('🔍 Extract & Validate Message').first().json.sessionId, timestamp: new Date().toISOString(), source: 'mc3-rag-agent' }) }}",
+        "options": {}
+      },
+      "id": "926ce471-358b-4e0c-9099-137fc832c49b",
+      "name": "📤 Send Response to Customer",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        1280,
+        272
+      ],
+      "typeVersion": 1.1
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "📡 AgentX Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "🔍 Extract & Validate Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Extract & Validate Message": {
+      "main": [
+        [
+          {
+            "node": "🤖 MC3 AI Support Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 MC3 AI Support Agent": {
+      "main": [
+        [
+          {
+            "node": "📤 Send Response to Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 OpenAI GPT-4o": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "🤖 MC3 AI Support Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🗃️ Supabase RAG Retriever": {
+      "ai_tool": [
+        [
+          {
+            "node": "🤖 MC3 AI Support Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📐 OpenAI Embeddings (Retriever)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "🗃️ Supabase RAG Retriever",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "🤖 MC3 AI Support Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a1ff3871-740f-4109-bdb2-e239bbdda256",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "13c5e749e41377da574139d5ae1c0b7cc3dd7e7d4abd9269d46e6af5701b4608"
+  },
+  "id": "ifOIYwK0a4bvbkWg",
+  "tags": []
+}

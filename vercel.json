@@ -1,0 +1,6 @@
+{
+  "routes": [
+    { "src": "/",      "dest": "/customer-center.html" },
+    { "src": "/admin", "dest": "/customer-admin.html"  }
+  ]
+}

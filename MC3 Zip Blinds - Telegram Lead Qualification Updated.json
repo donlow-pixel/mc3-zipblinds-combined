@@ -1,0 +1,380 @@
+{
+  "name": "MC3 Zip Blinds – Telegram Lead Qualification",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## ✈️ MC3 Telegram Lead Qualification Flow\n\n**How it works:**\n1. Customer messages the MC3 Telegram bot\n2. Stage 1 — Bot captures Name + Email (required before any product help)\n3. Stage 2 — Bot answers product questions via Supabase RAG (mc3_documents table)\n4. Each reply includes a lead score 0–100 based on purchase intent signals\n5. Score > 69 → Gmail alert fired to sales team\n6. Score ≤ 69 → Plain Telegram reply only\n\n**Shared knowledge base:** `mc3_documents` table in Supabase\n(same table used by the AgentX web chat — documents uploaded via the Admin Portal appear here too)\n\n**Credentials needed (re-pick after import):**\n• telegramApi — Telegram Trigger + Send a text message\n• openAiApi — OpenAI GPT-4o (chat) + OpenAI Embeddings (same credential)\n• supabaseApi — Supabase RAG Retriever\n• gmailOAuth2 — Gmail Alert (DISABLE this node if no Gmail credential)",
+        "height": 480,
+        "width": 660,
+        "color": 4
+      },
+      "id": "mc3tg-note-readme-0001",
+      "name": "📋 README",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## 🔁 Lead Score Logic\n\n**Scoring signals (0–100):**\n- Named a specific product / model → +15\n- Comparing prices or asking about lead times → +20\n- Mentioned a specific installation timeline → +15\n- Commercial / bulk order signals → +20\n- Multiple substantive questions → +10 each (up to +30)\n\n**Threshold:** score > 69 → qualified lead\n→ Gmail alert to sales team fires automatically\n→ Telegram reply still sent to the customer\n\n**Fallback:** If the knowledge base has no match,\nbot replies: \"Please contact support@mc3blinds.com\nor call 1800-MC3-HELP\"",
+        "height": 340,
+        "width": 500,
+        "color": 2
+      },
+      "id": "mc3tg-note-scoring-0002",
+      "name": "📊 Lead Score Logic",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        700,
+        0
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "mc3tg-telegram-trigger-0003",
+      "name": "✈️ Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "position": [
+        240,
+        560
+      ],
+      "webhookId": "mc3-telegram-lead-bot-001",
+      "typeVersion": 1.2,
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_TELEGRAM_CREDENTIAL_ID",
+          "name": "MC3 Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=User message:\n{{ $json.message.text }}\n\nContext:\n- Channel: Telegram\n- Telegram User ID: {{ $json.message.from.id }}\n- Username: {{ $json.message.from.username || 'unknown' }}\n\nInstructions:\n- If Name and Email have not been captured, extract them from the current message.\n- Once registered, answer MC3 Zip Blind product questions using the mc3_knowledge_base RAG tool.\n- Always score the lead based on signals in the conversation.",
+        "options": {
+          "systemMessage": "You are MC3 Zip Blinds' AI assistant on Telegram — combining expert product support with lead qualification.\n\nYour workflow has two stages:\n\nSTAGE 1: USER REGISTRATION\n- At the start of every new conversation, ask the user to provide their Name and Email address.\n- Expected input: free text, e.g. \"Jane Doe, jane@example.com\"\n- Extract the Name and Email from the message.\n- Validate: email must follow a valid format (e.g. name@domain.com).\n- If either is missing or the email is invalid, respond politely and ask again.\n- Do NOT assume or hallucinate values.\n- Once both are captured, warmly greet the user by first name and confirm registration.\n\nSTAGE 2: PRODUCT SUPPORT & LEAD QUALIFICATION\n- Once the user is registered, help with any MC3 Zip Blind enquiry.\n- ALWAYS call the mc3_knowledge_base RAG tool before answering any product question.\n- Topics covered: product models, installation, motor troubleshooting, warranty, spare parts, returns, cleaning, pricing, and commercial orders.\n- If the knowledge base has no relevant result, respond EXACTLY:\n  \"I'm sorry, I couldn't find specific information about that. Please contact our support team at support@mc3blinds.com or call 1800-MC3-HELP. A human agent will assist you shortly.\"\n- Do NOT make up product specifications, prices, or availability.\n- Keep responses concise, friendly, and professional.\n- If the customer seems frustrated, acknowledge their concern empathetically before answering.\n\nLead Scoring (0–100) — assess and update with every reply:\n- Product interest clarity: has the user named a specific model or product line? (+15)\n- Purchase intent: comparing prices, asking about lead times, or ready to order? (+20)\n- Timeline urgency: is this a repair, replacement, or new installation with a deadline? (+15)\n- Scale: commercial or bulk order signals (vs. single residential window)? (+20)\n- Engagement depth: each substantive product question adds +10 (up to +30 total)\n\nOutput Rules:\n- ALWAYS return valid JSON only. No plain text outside the JSON object. No markdown fences.\n- The reply_to_user field must never be empty — always provide a friendly message.\n\nOutput format (strict — no extra keys):\n{\n  \"reply_to_user\": \"\",\n  \"user_registered\": false,\n  \"lead_data\": {\n    \"name\": \"\",\n    \"email\": \"\",\n    \"product_interest\": \"\",\n    \"issue_type\": \"\",\n    \"urgency\": \"\",\n    \"scale\": \"\"\n  },\n  \"lead_score\": 0,\n  \"qualified\": false,\n  \"reason\": \"\",\n  \"conversation_summary\": \"\"\n}\n\nSpecial conditions:\n- Not yet registered → user_registered: false, lead_score: 0, reply_to_user must ask for Name and Email\n- Registered → user_registered: true, continue scoring on every turn\n- Set qualified: true when lead_score >= 70"
+        }
+      },
+      "id": "mc3tg-agent-0004",
+      "name": "🤖 MC3 Telegram Lead Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        560,
+        560
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o"
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "mc3tg-openai-chat-0005",
+      "name": "🧠 OpenAI GPT-4o",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        400,
+        800
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "X0ObAVdred9V8HFu",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.from.id }}",
+        "contextWindowLength": 15
+      },
+      "id": "mc3tg-memory-0006",
+      "name": "🔑 Simple Memory (per user)",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        640,
+        800
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Search the MC3 Zip Blinds knowledge base. Contains product manuals, installation guides, FAQs, warranty policies, troubleshooting guides, and spare parts information. ALWAYS call this tool before answering any product question.",
+        "tableName": {
+          "__rl": true,
+          "value": "mc3_documents",
+          "mode": "list",
+          "cachedResultName": "mc3_documents"
+        },
+        "topK": 5,
+        "options": {
+          "queryName": "match_mc3_documents"
+        },
+        "toolName": "mc3_knowledge_base"
+      },
+      "id": "mc3tg-rag-retriever-0007",
+      "name": "🗃️ MC3 RAG Retriever",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "position": [
+        800,
+        960
+      ],
+      "typeVersion": 1.3,
+      "credentials": {
+        "supabaseApi": {
+          "id": "jI0LKCf8u8u9hEpI",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "mc3tg-embeddings-0008",
+      "name": "📐 OpenAI Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "position": [
+        960,
+        1120
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "openAiApi": {
+          "id": "X0ObAVdred9V8HFu",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get raw output from the AI Agent\nlet raw = $json.output ?? \"\";\n\n// Strip markdown fences if the model wrapped the JSON\nraw = String(raw).replace(/```json/gi, '').replace(/```/g, '').trim();\n\nconst FALLBACK_REPLY = \"Sorry, I had a moment of trouble. Could you please repeat your question?\";\n\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch (err) {\n  // Raw text may still be a useful reply — send it if it's short enough\n  return [{\n    json: {\n      parse_success: false,\n      Name: \"\",\n      Email: \"\",\n      reply_to_user: (raw && raw.length < 4000) ? raw : FALLBACK_REPLY,\n      lead_score: 0,\n      error: \"Invalid JSON from agent\"\n    }\n  }];\n}\n\nconst name  = parsed.lead_data?.name  || \"\";\nconst email = parsed.lead_data?.email || \"\";\nconst reply = parsed.reply_to_user    || FALLBACK_REPLY;\nconst score = parsed.lead_score       || 0;\n\nreturn [{\n  json: {\n    parse_success: true,\n    Name:          name,\n    Email:         email,\n    reply_to_user: reply,\n    lead_score:    score,\n    qualified:     parsed.qualified || false,\n    product_interest: parsed.lead_data?.product_interest || \"\",\n    conversation_summary: parsed.conversation_summary || \"\"\n  }\n}];"
+      },
+      "id": "mc3tg-code-parse-0009",
+      "name": "⚙️ Parse Agent Output",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        960,
+        560
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "mc3-lead-score-check",
+              "leftValue": "={{ $json.lead_score }}",
+              "rightValue": 69,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "mc3tg-if-score-0010",
+      "name": "🎯 If (Score > 69)",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1280,
+        560
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "sendTo": "=sales@mc3blinds.com",
+        "subject": "=🪟 New MC3 Lead – {{ $json.Name }} (Score: {{ $json.lead_score }})",
+        "message": "=A qualified lead has been captured via the MC3 Zip Blinds Telegram bot.\n\n👤 Name:   {{ $json.Name }}\n📧 Email:  {{ $json.Email }}\n📊 Lead Score:  {{ $json.lead_score }} / 100\n🏷️ Product Interest:  {{ $json.product_interest || 'Not specified' }}\n\n📝 Conversation Summary:\n{{ $json.conversation_summary || 'See n8n Executions panel for full transcript.' }}\n\nPlease follow up with this lead promptly.\n\n──────────────────────────────\nGenerated by MC3 Telegram Lead Qualification Bot\nn8n workflow: MC3 Zip Blinds – Telegram Lead Qualification",
+        "options": {}
+      },
+      "id": "mc3tg-gmail-alert-0011",
+      "name": "📧 Gmail Lead Alert",
+      "type": "n8n-nodes-base.gmail",
+      "disabled": true,
+      "position": [
+        1600,
+        440
+      ],
+      "typeVersion": 2.2,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_GMAIL_OAUTH2_CREDENTIAL_ID",
+          "name": "Gmail OAuth2 (Sales)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('✈️ Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.reply_to_user }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "mc3tg-telegram-reply-0012",
+      "name": "✉️ Send Telegram Reply",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        1600,
+        680
+      ],
+      "typeVersion": 1.2,
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_TELEGRAM_CREDENTIAL_ID",
+          "name": "MC3 Telegram Bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "✈️ Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "🤖 MC3 Telegram Lead Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 MC3 Telegram Lead Agent": {
+      "main": [
+        [
+          {
+            "node": "⚙️ Parse Agent Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 OpenAI GPT-4o": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "🤖 MC3 Telegram Lead Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔑 Simple Memory (per user)": {
+      "ai_memory": [
+        [
+          {
+            "node": "🤖 MC3 Telegram Lead Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🗃️ MC3 RAG Retriever": {
+      "ai_tool": [
+        [
+          {
+            "node": "🤖 MC3 Telegram Lead Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📐 OpenAI Embeddings": {
+      "ai_embedding": [
+        [
+          {
+            "node": "🗃️ MC3 RAG Retriever",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚙️ Parse Agent Output": {
+      "main": [
+        [
+          {
+            "node": "🎯 If (Score > 69)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 If (Score > 69)": {
+      "main": [
+        [
+          {
+            "node": "📧 Gmail Lead Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "✉️ Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📧 Gmail Lead Alert": {
+      "main": [
+        [
+          {
+            "node": "✉️ Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "mc3-telegram-lead-qual-v1-combined",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "13c5e749e41377da574139d5ae1c0b7cc3dd7e7d4abd9269d46e6af5701b4608"
+  },
+  "id": "MC3TelegramLeadQual01",
+  "tags": []
+}

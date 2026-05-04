@@ -213,7 +213,7 @@
     {
       "parameters": {
         "chatId": "={{ $('✈️ Telegram Trigger').item.json.message.chat.id }}",
-        "text": "={{ $json.reply_to_user }}",
+        "text": "={{ $('⚙️ Parse Agent Output').first().json.reply_to_user }}",
         "additionalFields": {
           "appendAttribution": false
         }
